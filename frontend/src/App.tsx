@@ -34,6 +34,7 @@ const App: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [speed, setSpeed] = useState(0.2); 
   const [status, setStatus] = useState('Disconnected');
+  const [backendVersion, setBackendVersion] = useState('');
   
   const ws = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -141,13 +142,18 @@ const App: React.FC = () => {
         const msg = JSON.parse(event.data);
         if (msg.type === 'UPDATE') {
           setPopulations(msg.payload.populations);
-          const newPoint: HistoryPoint = { time: Math.round(msg.payload.time * 100) / 100 };
+          const newPoint: HistoryPoint = { time: msg.payload.time };
           msg.payload.populations.forEach((p: number, i: number) => {
-            if (species[i]) newPoint[species[i].name] = Math.round(p * 10) / 10;
+            if (species[i]) newPoint[species[i].name] = p;
           });
-          setHistory(prev => [...prev, newPoint]);
+          setHistory(prev => {
+            const next = [...prev, newPoint];
+            if (next.length > 1000) return next.slice(next.length - 1000);
+            return next;
+          });
         } else if (msg.type === 'STATUS') {
           setIsRunning(msg.payload.is_running);
+          if (msg.payload.version) setBackendVersion(msg.payload.version);
         }
       };
       socket.onclose = () => {
@@ -203,10 +209,6 @@ const App: React.FC = () => {
   const updateMatrix = (r: number, c: number, val: number | string) => {
     const next = matrix.map(row => [...row]);
     next[r][c] = val;
-    const num = typeof val === 'string' ? parseFloat(val) : val;
-    if (r !== c && !isNaN(num)) {
-      next[c][r] = -num;
-    }
     setMatrix(next);
   };
 
@@ -220,9 +222,12 @@ const App: React.FC = () => {
           <p className="text-base text-slate-400 mt-1">by Tulip Kadri, Guy Dar, and Tom Kushilevitz</p>
         </div>
         <div className="flex gap-4 items-center">
-          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${status === 'Connected' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-            {status}
-          </span>
+          <div className="flex flex-col items-end">
+            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${status === 'Connected' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+              {status}
+            </span>
+            {backendVersion && <span className="text-[8px] text-slate-500 mt-1">Backend: {backendVersion}</span>}
+          </div>
           <div className="flex bg-slate-800 rounded-lg p-1 gap-1 items-center shadow-inner">
             <div className="flex items-center px-2 gap-2 border-r border-slate-700 mr-1">
               <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">Speed</span>
@@ -280,9 +285,12 @@ const App: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart data={history} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" dataKey={species[0]?.name || 'Prey'} stroke="#acacd0" fontSize={9} name={species[0]?.name || 'Prey'} label={{ value: species[0]?.name || 'Prey', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 9 }} />
-                  <YAxis type="number" dataKey={species[1]?.name || 'Predator'} stroke="#acacd0" fontSize={9} name={species[1]?.name || 'Predator'} label={{ value: species[1]?.name || 'Predator', angle: -90, position: 'insideLeft', offset: 5, fill: '#64748b', fontSize: 9 }} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '10px' }} />
+                  <XAxis type="number" dataKey={species[0]?.name || 'Prey'} stroke="#acacd0" fontSize={9} tickFormatter={(value: number) => value.toFixed(1)} name={species[0]?.name || 'Prey'} label={{ value: species[0]?.name || 'Prey', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 9 }} />
+                  <YAxis type="number" dataKey={species[1]?.name || 'Predator'} stroke="#acacd0" fontSize={9} tickFormatter={(value: number) => value.toFixed(1)} name={species[1]?.name || 'Predator'} label={{ value: species[1]?.name || 'Predator', angle: -90, position: 'insideLeft', offset: 5, fill: '#64748b', fontSize: 9 }} />
+                  <Tooltip
+                    formatter={(value: number) => value.toFixed(2)}
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '10px' }}
+                  />
                   <Scatter
                     name="Phase Space"
                     dataKey={species[1]?.name || 'Predator'}
@@ -298,9 +306,13 @@ const App: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={history}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                <XAxis dataKey="time" stroke="#64748b" fontSize={9} tickCount={8} domain={[0, 'dataMax']} type="number" />
-                <YAxis stroke="#64748b" fontSize={9} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '10px' }} />
+                <XAxis dataKey="time" stroke="#64748b" fontSize={9} tickCount={8} domain={[0, 'dataMax']} type="number" tickFormatter={(value: number) => value.toFixed(1)} />
+                <YAxis stroke="#64748b" fontSize={9} tickFormatter={(value: number) => value.toFixed(1)} />
+                <Tooltip
+                  labelFormatter={(label: number) => `t=${label.toFixed(2)}`}
+                  formatter={(value: number) => value.toFixed(2)}
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '10px' }}
+                />
                 <Legend iconSize={8} wrapperStyle={{ fontSize: '9px', paddingTop: '10px' }} />
                 {species.map((s, i) => (
                   <Line key={i} type="monotone" dataKey={s.name} stroke={s.color} dot={false} strokeWidth={1.5} isAnimationActive={false} />

@@ -4,8 +4,15 @@ $ErrorActionPreference = "Stop"
 Write-Host "Starting Lotka-Volterra Ecosystem..." -ForegroundColor Cyan
 
 # Start Backend
+Write-Host "Cleaning up old processes on ports 8000 and 5173..." -ForegroundColor Gray
+try {
+    Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+    Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+} catch {}
+
 Write-Host "Launching Python Backend (FastAPI)..." -ForegroundColor Yellow
-$BackendProcess = Start-Process powershell -ArgumentList "-NoProfile", "-Command", "cd backend; .\venv\Scripts\python.exe main.py" -PassThru -WindowStyle Hidden
+# Removed -WindowStyle Hidden so you can see the version print
+$BackendProcess = Start-Process powershell -ArgumentList "-NoProfile", "-Command", "cd backend; .\venv\Scripts\python.exe main.py" -PassThru
 
 # Start Frontend
 Write-Host "Launching React Frontend (Vite)..." -ForegroundColor Yellow
