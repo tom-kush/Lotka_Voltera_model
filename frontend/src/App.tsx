@@ -32,7 +32,7 @@ const App: React.FC = () => {
   const [populations, setPopulations] = useState<number[]>([40, 9]);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [speed, setSpeed] = useState(0.2); 
+  const [speed, setSpeed] = useState(1); 
   const [status, setStatus] = useState('Disconnected');
   const [backendVersion, setBackendVersion] = useState('');
   
@@ -104,7 +104,7 @@ const App: React.FC = () => {
 
         ctx.fillStyle = species[p.speciesIdx]?.color || '#fff';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
         ctx.fill();
       });
 
@@ -224,7 +224,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-screen bg-slate-900 text-slate-100 flex flex-col p-4 overflow-hidden text-[11px] md:text-xs">
+    <div className="h-screen bg-slate-900 text-slate-100 flex flex-col p-4 overflow-hidden text-xs md:text-sm">
       <header className="flex justify-between items-center mb-3 shrink-0">
         <div>
           <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
@@ -234,14 +234,14 @@ const App: React.FC = () => {
         </div>
         <div className="flex gap-4 items-center">
           <div className="flex flex-col items-end">
-            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${status === 'Connected' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${status === 'Connected' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
               {status}
             </span>
-            {backendVersion && <span className="text-[8px] text-slate-500 mt-1">Backend: {backendVersion}</span>}
+            {backendVersion && <span className="text-xs text-slate-500 mt-1">Backend: {backendVersion}</span>}
           </div>
           <div className="flex bg-slate-800 rounded-lg p-1 gap-1 items-center shadow-inner">
             <div className="flex items-center px-2 gap-2 border-r border-slate-700 mr-1">
-              <span className="text-[9px] text-slate-500 font-bold uppercase tracking-tighter">Speed</span>
+              <span className="text-xs text-slate-500 font-bold uppercase tracking-tighter">Speed</span>
               <input 
                 type="number"
                 min={SPEED_MIN}
@@ -254,9 +254,9 @@ const App: React.FC = () => {
                     setSpeed(clampSpeed(next));
                   }
                 }}
-                className="w-20 bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[10px] focus:border-blue-500 outline-none"
+                className="w-24 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm focus:border-blue-500 outline-none"
               />
-              <span className="text-[9px] text-slate-500">x</span>
+              <span className="text-xs text-slate-500">x</span>
             </div>
             <button 
               onClick={handleStart} 
@@ -286,7 +286,7 @@ const App: React.FC = () => {
                 {species.map((s, i) => (
                   <div key={i} className="bg-slate-900/90 backdrop-blur px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1.5">
                     <div className="w-2 h-2 rounded-full shadow-[0_0_5px_currentColor]" style={{ backgroundColor: s.color, color: s.color }} />
-                    <span className="text-[9px] font-bold uppercase tracking-tight">{s.name}: {Math.floor(populations[i] || 0)}</span>
+                    <span className="text-xs font-bold uppercase tracking-tight">{s.name}: {Math.floor(populations[i] || 0)}</span>
                   </div>
                 ))}
               </div>
@@ -296,11 +296,11 @@ const App: React.FC = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart data={history} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" dataKey={species[0]?.name || 'Prey'} stroke="#acacd0" fontSize={9} tickFormatter={(value: number) => value.toFixed(1)} name={species[0]?.name || 'Prey'} label={{ value: species[0]?.name || 'Prey', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 9 }} />
-                  <YAxis type="number" dataKey={species[1]?.name || 'Predator'} stroke="#acacd0" fontSize={9} tickFormatter={(value: number) => value.toFixed(1)} name={species[1]?.name || 'Predator'} label={{ value: species[1]?.name || 'Predator', angle: -90, position: 'insideLeft', offset: 5, fill: '#64748b', fontSize: 9 }} />
+                  <XAxis type="number" dataKey={species[0]?.name || 'Prey'} stroke="#acacd0" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} name={species[0]?.name || 'Prey'} label={{ value: species[0]?.name || 'Prey', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 11 }} />
+                  <YAxis type="number" dataKey={species[1]?.name || 'Predator'} stroke="#acacd0" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} name={species[1]?.name || 'Predator'} label={{ value: species[1]?.name || 'Predator', angle: -90, position: 'insideLeft', offset: 5, fill: '#64748b', fontSize: 11 }} />
                   <Tooltip
                     formatter={(value: number) => value.toFixed(2)}
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '10px' }}
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px' }}
                   />
                   <Scatter
                     name="Phase Space"
@@ -317,14 +317,14 @@ const App: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={history}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                <XAxis dataKey="time" stroke="#64748b" fontSize={9} tickCount={8} domain={[0, 'dataMax']} type="number" tickFormatter={(value: number) => value.toFixed(1)} />
-                <YAxis stroke="#64748b" fontSize={9} tickFormatter={(value: number) => value.toFixed(1)} />
+                <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickCount={8} domain={[0, 'dataMax']} type="number" tickFormatter={(value: number) => value.toFixed(1)} />
+                <YAxis stroke="#64748b" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} />
                 <Tooltip
                   labelFormatter={(label: number) => `t=${label.toFixed(2)}`}
                   formatter={(value: number) => value.toFixed(2)}
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '10px' }}
+                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px' }}
                 />
-                <Legend iconSize={8} wrapperStyle={{ fontSize: '9px', paddingTop: '10px' }} />
+                <Legend iconSize={10} wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
                 {species.map((s, i) => (
                   <Line key={i} type="monotone" dataKey={s.name} stroke={s.color} dot={false} strokeWidth={1.5} isAnimationActive={false} />
                 ))}
@@ -335,25 +335,25 @@ const App: React.FC = () => {
 
         <div className="flex-1 bg-slate-800 rounded-xl p-4 border border-slate-700 shadow-xl flex flex-col gap-4 overflow-y-auto min-w-[280px]">
           <div className="flex justify-between items-center shrink-0">
-            <h2 className="text-xs font-bold flex items-center gap-2 uppercase tracking-widest text-slate-400"><Settings2 size={14} /> Config</h2>
-            <button onClick={addSpecies} className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-[10px]"><Plus size={12} /></button>
+            <h2 className="text-base font-bold flex items-center gap-2 uppercase tracking-widest text-slate-400"><Settings2 size={16} /> Config</h2>
+            <button onClick={addSpecies} className="p-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm"><Plus size={14} /></button>
           </div>
 
           <div className="flex flex-col gap-2">
             {species.map((s, i) => (
-              <div key={i} className="p-2 bg-slate-900/50 rounded-lg border border-slate-700 flex flex-col gap-2 transition-colors hover:border-slate-600">
+              <div key={i} className="p-3 bg-slate-900/50 rounded-lg border border-slate-700 flex flex-col gap-3 transition-colors hover:border-slate-600">
                 <div className="flex gap-2">
-                  <input type="color" value={s.color} onChange={e => updateSpecies(i, 'color', e.target.value)} className="w-7 h-7 bg-transparent cursor-pointer rounded shrink-0 overflow-hidden" />
-                  <input type="text" value={s.name} onChange={e => updateSpecies(i, 'name', e.target.value)} className="bg-slate-800/50 border-none rounded px-2 flex-1 text-xs font-semibold focus:ring-1 focus:ring-blue-500 outline-none" />
+                  <input type="color" value={s.color} onChange={e => updateSpecies(i, 'color', e.target.value)} className="w-8 h-8 bg-transparent cursor-pointer rounded shrink-0 overflow-hidden" />
+                  <input type="text" value={s.name} onChange={e => updateSpecies(i, 'name', e.target.value)} className="bg-slate-800/50 border-none rounded px-2 py-1.5 flex-1 text-base font-semibold focus:ring-1 focus:ring-blue-500 outline-none" />
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[9px]">
+                <div className="grid grid-cols-2 gap-3 text-xs">
                   <div>
-                    <label className="text-slate-500 mb-0.5 block uppercase font-bold tracking-tighter">Initial Pop</label>
-                    <input type="number" value={s.initial_pop} onChange={e => updateSpecies(i, 'initial_pop', parseFloat(e.target.value))} className="w-full bg-slate-800/50 border border-slate-700 rounded px-1.5 py-0.5 focus:border-blue-500 outline-none" />
+                    <label className="text-slate-500 mb-1 block uppercase font-bold tracking-tighter text-xs">Initial Pop</label>
+                    <input type="number" value={s.initial_pop} onChange={e => updateSpecies(i, 'initial_pop', parseFloat(e.target.value))} className="w-full bg-slate-800/50 border border-slate-700 rounded px-2 py-1.5 text-sm focus:border-blue-500 outline-none" />
                   </div>
                   <div>
-                    <label className="text-slate-500 mb-0.5 block uppercase font-bold tracking-tighter">Rate (ε)</label>
-                    <input type="number" step="0.1" value={s.eps} onChange={e => updateSpecies(i, 'eps', parseFloat(e.target.value))} className="w-full bg-slate-800/50 border border-slate-700 rounded px-1.5 py-0.5 focus:border-blue-500 outline-none" />
+                    <label className="text-slate-500 mb-1 block uppercase font-bold tracking-tighter text-xs">Rate (ε)</label>
+                    <input type="number" step="0.1" value={s.eps} onChange={e => updateSpecies(i, 'eps', parseFloat(e.target.value))} className="w-full bg-slate-800/50 border border-slate-700 rounded px-2 py-1.5 text-sm focus:border-blue-500 outline-none" />
                   </div>
                 </div>
               </div>
@@ -361,21 +361,21 @@ const App: React.FC = () => {
           </div>
 
           <div className="mt-2 shrink-0 border-t border-slate-700 pt-4">
-            <h3 className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500 mb-3 text-center">Interactions (A)</h3>
+            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 mb-3 text-center">Interactions (A)</h3>
             <div className="overflow-x-auto pb-2">
-              <table className="w-full text-[9px] text-center border-collapse">
+              <table className="w-full text-xs text-center border-collapse">
                 <thead>
                   <tr>
-                    <th className="p-1 opacity-40 font-normal italic">On ↓ / By →</th>
-                    {species.map((s, i) => <th key={i} className="p-1" style={{ color: s.color }}>{s.name}</th>)}
+                    <th className="p-1.5 opacity-40 font-normal italic">On ↓ / By →</th>
+                    {species.map((s, i) => <th key={i} className="p-1.5" style={{ color: s.color }}>{s.name}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {species.map((s_r, r) => (
                     <tr key={r} className="hover:bg-slate-800/30">
-                      <td className="p-1 font-bold text-left" style={{ color: s_r.color }}>{s_r.name}</td>
+                      <td className="p-1.5 font-bold text-left" style={{ color: s_r.color }}>{s_r.name}</td>
                       {species.map((_s_s, s) => (
-                        <td key={s} className="p-1">
+                        <td key={s} className="p-1.5">
                           <input 
                             type="text" 
                             value={matrix[r]?.[s] ?? ''} 
@@ -390,7 +390,7 @@ const App: React.FC = () => {
                                 if (!isNaN(num)) updateMatrix(r, s, v);
                               }
                             }}
-                            className="w-10 bg-slate-900 border border-slate-700 rounded px-1 py-0.5 text-center focus:border-blue-500 outline-none"
+                            className="w-12 bg-slate-900 border border-slate-700 rounded px-1.5 py-1 text-sm text-center focus:border-blue-500 outline-none"
                           />
                         </td>
                       ))}
@@ -407,7 +407,7 @@ const App: React.FC = () => {
                 </span>
                 <span className="ml-1">= (ε<sub>r</sub> + Σ<sub>s</sub> A<sub>rs</sub> N<sub>s</sub>) N<sub>r</sub></span>
               </div>
-              <div className="text-[9px] text-slate-500 text-center mt-2 uppercase tracking-[0.2em] font-bold opacity-50">
+              <div className="text-[10px] text-slate-500 text-center mt-2 uppercase tracking-[0.2em] font-bold opacity-50">
                 Lotka-Volterra equations
               </div>
             </div>
