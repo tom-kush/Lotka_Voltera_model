@@ -147,8 +147,19 @@ const App: React.FC = () => {
             if (species[i]) newPoint[species[i].name] = p;
           });
           setHistory(prev => {
+            // 1. Throttle: Only add to history if simulation time has advanced significantly
+            // This prevents the graph from being "over-saturated" at slow speeds.
+            const lastPoint = prev[prev.length - 1];
+            if (lastPoint && msg.payload.time - lastPoint.time < 0.01) {
+              return prev;
+            }
+
             const next = [...prev, newPoint];
-            if (next.length > 1000) return next.slice(next.length - 1000);
+            // 2. Progressive Downsampling: When full, keep every 2nd point.
+            // This doubles the time span while keeping the point count at ~2500.
+            if (next.length > 5000) {
+              return next.filter((_, i) => i % 2 === 0);
+            }
             return next;
           });
         } else if (msg.type === 'STATUS') {
@@ -388,9 +399,18 @@ const App: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            <p className="text-[8px] text-slate-600 italic mt-3 text-center px-4">
-              Changes update the active ecosystem in real-time. Use Reset to re-initialize populations.
-            </p>
+            <div className="mt-6 p-4 bg-slate-900/50 rounded-xl border border-slate-700 shadow-inner group hover:border-blue-500/50 transition-colors">
+              <div className="text-lg md:text-xl font-serif text-slate-300 text-center italic tracking-wide">
+                <span className="inline-flex flex-col items-center align-middle leading-none mx-1 not-italic">
+                  <span>dN<sub>r</sub></span>
+                  <span className="w-full border-t border-slate-400 mt-0.5 pt-0.5 text-[0.9em]">dt</span>
+                </span>
+                <span className="ml-1">= (ε<sub>r</sub> + Σ<sub>s</sub> A<sub>rs</sub> N<sub>s</sub>) N<sub>r</sub></span>
+              </div>
+              <div className="text-[9px] text-slate-500 text-center mt-2 uppercase tracking-[0.2em] font-bold opacity-50">
+                Lotka-Volterra equations
+              </div>
+            </div>
           </div>
         </div>
       </main>
