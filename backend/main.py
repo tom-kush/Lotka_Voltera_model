@@ -6,7 +6,7 @@ from typing import List, Dict
 
 app = FastAPI()
 
-VERSION = "1.1.0-SYMMETRIC"
+VERSION = "1.1.1-STABLE"
 print(f"--- Starting Lotka-Volterra Backend {VERSION} ---")
 
 SPEED_MIN = 0.05
@@ -82,6 +82,7 @@ sim = Simulation()
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     try:
+        await websocket.send_json({"type": "STATUS", "payload": {"is_running": sim.is_running, "version": VERSION}})
         while True:
             try:
                 # Check for incoming messages

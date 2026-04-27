@@ -22,8 +22,8 @@ const clampSpeed = (value: number) => Math.min(SPEED_MAX, Math.max(SPEED_MIN, va
 
 const App: React.FC = () => {
   const [species, setSpecies] = useState<Species[]>([
-    { name: 'Prey', color: '#22c55e', initial_pop: 40, eps: 1.0 },
-    { name: 'Predator', color: '#ef4444', initial_pop: 9, eps: -1.0 }
+    { name: 'Prey', color: '#22c55e', initial_pop: 40, eps: 2.0 },
+    { name: 'Predator', color: '#ef4444', initial_pop: 10, eps: -2.0 }
   ]);
   const [matrix, setMatrix] = useState<(number | string)[][]>([
     [0, -0.1],

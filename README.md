@@ -6,6 +6,10 @@ An interactive predator-prey ecosystem simulator with:
 - A React + TypeScript frontend with live controls and visualizations.
 - WebSocket streaming between backend and frontend for low-latency updates.
 
+Current release:
+
+- Version: 1.1.1-STABLE
+
 ## What This Project Does
 
 You can define multiple species, tune intrinsic growth/decay rates and pairwise interactions, and watch how populations evolve.
@@ -38,12 +42,12 @@ The solver is implemented in backend/main.py.
 - Speed from UI is converted to dt by:
   - dt = speed * 0.005
   - speed is clamped to [0.05, 5.0]
-- Integration uses RK4 in log-space with internal substeps:
+- Integration uses a symmetric (symplectic) midpoint rule in log-space with fixed-point iterations:
   - Integrates L = log(N) instead of N directly.
-  - Derivative in log-space: dL/dt = eps + A * exp(L)
-  - Internal step cap: MAX_INTERNAL_DT = 0.00025
+  - Implicit midpoint update is solved by short fixed-point iteration each substep.
+  - Internal substep target: 0.0005
 
-### Why log-space RK4
+### Why log-space symmetric midpoint
 
 - Preserves positivity naturally (N = exp(L)).
 - Significantly reduces high-speed drift compared to plain Euler.
@@ -73,7 +77,7 @@ The solver is implemented in backend/main.py.
   - RESET
 - Sends:
   - UPDATE (time + populations)
-  - STATUS (running/paused state)
+  - STATUS (running/paused state + backend version)
 
 ### Frontend (React + Recharts)
 
@@ -97,7 +101,7 @@ The graphs are intended to reflect numerical state more faithfully:
 
 ## Interaction Matrix Behavior
 
-In the current frontend UI logic, editing an off-diagonal element mirrors the opposite entry with a negated value (skew-symmetric convenience behavior). This is useful for predator-prey style couplings but is a modeling assumption in the UI layer.
+The interaction matrix is edited directly in the UI. Entries are not auto-mirrored, so asymmetric interactions are supported.
 
 ## Speed Control
 
@@ -175,7 +179,7 @@ Key runtime dependencies:
 ### Drift or strange high-speed behavior
 
 - Lower speed first to validate baseline dynamics.
-- The current solver is already stabilized (log-space RK4 + substeps), but extremely stiff parameter sets can still require tighter internal step caps.
+- The current solver is already stabilized (log-space symmetric midpoint + substeps), but extremely stiff parameter sets can still require tighter internal step caps.
 
 ## Notes and Limitations
 
