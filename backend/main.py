@@ -58,7 +58,7 @@ class Simulation:
         
         # Substepping for numerical robustness at high speeds
         total_dt = self.dt
-        target_substep_dt = 0.0005
+        target_substep_dt = 0.02
         n_steps = max(1, int(np.ceil(total_dt / target_substep_dt)))
         h = total_dt / n_steps
         
@@ -118,8 +118,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "populations": sim.current_populations.tolist()
                     }
                 })
-                # High-frequency updates for smooth phase space visualization
-                await asyncio.sleep(0.001) 
+                await asyncio.sleep(0.01) 
             else:
                 await asyncio.sleep(0.1)
 

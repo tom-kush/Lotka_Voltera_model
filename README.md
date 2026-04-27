@@ -45,7 +45,11 @@ The solver is implemented in backend/main.py.
 - Integration uses a symmetric (symplectic) midpoint rule in log-space with fixed-point iterations:
   - Integrates L = log(N) instead of N directly.
   - Implicit midpoint update is solved by short fixed-point iteration each substep.
-  - Internal substep target: 0.0005
+  - Internal substep target: 0.02
+
+Runtime update cadence:
+
+- While running, backend emits UPDATE frames approximately every 0.01 seconds.
 
 ### Why log-space symmetric midpoint
 
@@ -110,6 +114,7 @@ UI speed input:
 - Min: 0.05
 - Max: 5.0
 - Step: 0.05
+- Default: 1.0
 
 Backend mapping:
 
