@@ -39,6 +39,11 @@ const App: React.FC = () => {
   const ws = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<{x: number, y: number, vx: number, vy: number, speciesIdx: number}[]>([]);
+  const speciesRef = useRef<Species[]>(species);
+
+  useEffect(() => {
+    speciesRef.current = species;
+  }, [species]);
 
   // Safety check for populations and matrix array
   useEffect(() => {
@@ -143,8 +148,9 @@ const App: React.FC = () => {
         if (msg.type === 'UPDATE') {
           setPopulations(msg.payload.populations);
           const newPoint: HistoryPoint = { time: msg.payload.time };
+          const activeSpecies = speciesRef.current;
           msg.payload.populations.forEach((p: number, i: number) => {
-            if (species[i]) newPoint[species[i].name] = p;
+            if (activeSpecies[i]) newPoint[activeSpecies[i].name] = p;
           });
           setHistory(prev => {
             // 1. Throttle: Only add to history if simulation time has advanced significantly
@@ -207,8 +213,25 @@ const App: React.FC = () => {
   };
 
   const addSpecies = () => {
-    const newSpecies = [...species, { name: `Specie ${species.length + 1}`, color: '#ffffff', initial_pop: 10, eps: 0.5 }];
+    const isAddingThirdSpecies = species.length === 2;
+    const newSpecies = [
+      ...species,
+      {
+        name: `Specie ${species.length + 1}`,
+        color: '#ffffff',
+        initial_pop: 10,
+        eps: isAddingThirdSpecies ? -2.0 : 0.5,
+      },
+    ];
     setSpecies(newSpecies);
+
+    if (isAddingThirdSpecies) {
+      setMatrix([
+        [0, -0.1, -0.02],
+        [0.1, 0, -0.03],
+        [0.05, 0.05, 0],
+      ]);
+    }
   };
 
   const updateSpecies = (idx: number, field: keyof Species, val: any) => {
@@ -292,44 +315,50 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex-1 bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-xl">
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart data={history} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" dataKey={species[0]?.name || 'Prey'} stroke="#acacd0" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} name={species[0]?.name || 'Prey'} label={{ value: species[0]?.name || 'Prey', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 11 }} />
-                  <YAxis type="number" dataKey={species[1]?.name || 'Predator'} stroke="#acacd0" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} name={species[1]?.name || 'Predator'} label={{ value: species[1]?.name || 'Predator', angle: -90, position: 'insideLeft', offset: 5, fill: '#64748b', fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(value: number) => value.toFixed(2)}
-                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px' }}
-                  />
-                  <Scatter
-                    name="Phase Space"
-                    dataKey={species[1]?.name || 'Predator'}
-                    fill="#8b5cf6"
-                    shape={(props: any) => <circle {...props} r={1.5} />}
-                  />
-                </ScatterChart>
-              </ResponsiveContainer>
+            <div className="flex-1 bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-xl flex flex-col min-h-0">
+              <h3 className="text-sm font-bold text-slate-300 mb-2 text-center">Prey vs Predator</h3>
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart data={history} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis type="number" dataKey={species[0]?.name || 'Prey'} stroke="#acacd0" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} name={species[0]?.name || 'Prey'} label={{ value: species[0]?.name || 'Prey', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 11 }} />
+                    <YAxis type="number" dataKey={species[1]?.name || 'Predator'} stroke="#acacd0" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} name={species[1]?.name || 'Predator'} label={{ value: species[1]?.name || 'Predator', angle: -90, position: 'insideLeft', offset: 5, fill: '#64748b', fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value: number) => value.toFixed(2)}
+                      contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px' }}
+                    />
+                    <Scatter
+                      name="Phase Space"
+                      dataKey={species[1]?.name || 'Predator'}
+                      fill="#8b5cf6"
+                      shape={(props: any) => <circle {...props} r={1.5} />}
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 
-          <div className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-xl flex-1 min-h-0 max-h-[38vh]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={history}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickCount={8} domain={[0, 'dataMax']} type="number" tickFormatter={(value: number) => value.toFixed(1)} />
-                <YAxis stroke="#64748b" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} />
-                <Tooltip
-                  labelFormatter={(label: number) => `t=${label.toFixed(2)}`}
-                  formatter={(value: number) => value.toFixed(2)}
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px' }}
-                />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                {species.map((s, i) => (
-                  <Line key={i} type="monotone" dataKey={s.name} stroke={s.color} dot={false} strokeWidth={1.5} isAnimationActive={false} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
+          <div className="bg-slate-800 rounded-xl p-3 border border-slate-700 shadow-xl flex-1 min-h-0 max-h-[38vh] flex flex-col">
+            <h3 className="text-sm font-bold text-slate-300 mb-2 text-center">Population over Time</h3>
+            <div className="flex-1 min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={history}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                  <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickCount={8} domain={[0, 'dataMax']} type="number" tickFormatter={(value: number) => value.toFixed(1)} />
+                  <YAxis stroke="#64748b" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} />
+                  <Tooltip
+                    labelFormatter={(label: number) => `t=${label.toFixed(2)}`}
+                    formatter={(value: number) => value.toFixed(2)}
+                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px' }}
+                  />
+                  <Legend iconSize={10} wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  {species.map((s, i) => (
+                    <Line key={i} type="monotone" dataKey={s.name} stroke={s.color} dot={false} strokeWidth={1.5} isAnimationActive={false} />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
