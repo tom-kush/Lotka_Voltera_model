@@ -6,7 +6,7 @@ from typing import List, Dict
 
 app = FastAPI()
 
-VERSION = "1.1.1-STABLE"
+VERSION = "1.2.0"
 print(f"--- Starting Lotka-Volterra Backend {VERSION} ---")
 
 SPEED_MIN = 0.05

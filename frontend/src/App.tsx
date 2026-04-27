@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Plus, Settings2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Plus, Settings2, Pin, Trash2, Crosshair } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ScatterChart, Scatter } from 'recharts';
 
 interface Species {
@@ -14,11 +14,73 @@ interface HistoryPoint {
   [key: string]: number;
 }
 
+interface PinnedTrace {
+  id: string;
+  name: string;
+  data: HistoryPoint[];
+  species: Species[];
+  matrix: number[][];
+  equilibrium?: { x: number, y: number };
+}
+
 const SPEED_MIN = 0.05;
 const SPEED_MAX = 5;
 const SPEED_STEP = 0.05;
 
 const clampSpeed = (value: number) => Math.min(SPEED_MAX, Math.max(SPEED_MIN, value));
+
+// Determinant for 2x2 matrix
+const det2x2 = (m: number[][]) => m[0][0] * m[1][1] - m[0][1] * m[1][0];
+
+// Determinant for 3x3 matrix
+const det3x3 = (m: number[][]) => (
+  m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -
+  m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) +
+  m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0])
+);
+
+const calculateEquilibrium = (species: Species[], matrix: (number | string)[][]): { x: number, y: number } | undefined => {
+  if (species.length < 2) return undefined;
+
+  const eps = species.map(s => s.eps);
+  const A = matrix.map(row => row.map(v => typeof v === 'string' ? parseFloat(v) : v));
+
+  // Solve AN = -eps
+  const b = eps.map(e => -e);
+
+  if (species.length === 2) {
+    const d = det2x2(A as number[][]);
+    if (Math.abs(d) < 1e-9) return undefined;
+    
+    // Cramer's rule
+    const n1 = det2x2([[b[0], A[0][1]], [b[1], A[1][1]]] as number[][]) / d;
+    const n2 = det2x2([[A[0][0], b[0]], [A[1][0], b[1]]] as number[][]) / d;
+    
+    return { x: n1, y: n2 };
+  } 
+  
+  if (species.length === 3) {
+    const d = det3x3(A as number[][]);
+    if (Math.abs(d) < 1e-9) return undefined;
+
+    const n1 = det3x3([
+      [b[0], A[0][1], A[0][2]],
+      [b[1], A[1][1], A[1][2]],
+      [b[2], A[2][1], A[2][2]]
+    ] as number[][]) / d;
+    
+    const n2 = det3x3([
+      [A[0][0], b[0], A[0][2]],
+      [A[1][0], b[1], A[1][2]],
+      [A[2][0], b[2], A[2][2]]
+    ] as number[][]) / d;
+
+    // We only plot first two species in phase space for now
+    return { x: n1, y: n2 };
+  }
+
+  return undefined;
+};
 
 const App: React.FC = () => {
   const [species, setSpecies] = useState<Species[]>([
@@ -31,10 +93,12 @@ const App: React.FC = () => {
   ]);
   const [populations, setPopulations] = useState<number[]>([40, 9]);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [pinnedTraces, setPinnedTraces] = useState<PinnedTrace[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [speed, setSpeed] = useState(1); 
   const [status, setStatus] = useState('Disconnected');
   const [backendVersion, setBackendVersion] = useState('');
+  const [hoveredTraceId, setHoveredTraceId] = useState<string | null>(null);
   
   const ws = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -212,6 +276,35 @@ const App: React.FC = () => {
     setPopulations(species.map(s => s.initial_pop));
   };
 
+  const handlePin = () => {
+    if (history.length === 0) return;
+
+    const id = Math.random().toString(36).substr(2, 9);
+    const now = new Date();
+    const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+    
+    // Downsample: keep every 5th point for better resolution as requested
+    const downsampledData = history.filter((_, i) => i % 5 === 0);
+    
+    const eq = calculateEquilibrium(species, matrix);
+    
+    const newTrace: PinnedTrace = {
+      id,
+      name: `Run ${timeStr}`,
+      data: downsampledData,
+      species: species.map(s => ({ ...s })), // Deep copy to preserve state at pin time
+      matrix: matrix.map(row => row.map(v => typeof v === 'string' ? parseFloat(v) : v)),
+      equilibrium: eq
+    };
+    
+    setPinnedTraces(prev => [...prev, newTrace]);
+  };
+
+  const handleDeleteTrace = (id: string) => {
+    setPinnedTraces(prev => prev.filter(t => t.id !== id));
+    if (hoveredTraceId === id) setHoveredTraceId(null);
+  };
+
   const addSpecies = () => {
     const isAddingThirdSpecies = species.length === 2;
     const newSpecies = [
@@ -296,6 +389,14 @@ const App: React.FC = () => {
               <Pause size={14} fill={!isRunning && history.length > 0 ? "currentColor" : "none"} />
             </button>
             <button onClick={handleReset} className="p-1.5 hover:bg-slate-700 rounded text-slate-400 transition-colors" title="Reset Simulation"><RotateCcw size={14} /></button>
+            <button 
+              onClick={handlePin} 
+              disabled={history.length === 0}
+              className={`p-1.5 rounded transition-all ${history.length > 0 ? 'hover:bg-slate-700 text-blue-400' : 'text-slate-600 cursor-not-allowed'}`} 
+              title="Pin Current Trace"
+            >
+              <Pin size={14} />
+            </button>
           </div>
         </div>
       </header>
@@ -319,7 +420,7 @@ const App: React.FC = () => {
               <h3 className="text-sm font-bold text-slate-300 mb-2 text-center">Prey vs Predator</h3>
               <div className="flex-1 min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart data={history} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis type="number" dataKey={species[0]?.name || 'Prey'} stroke="#acacd0" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} name={species[0]?.name || 'Prey'} label={{ value: species[0]?.name || 'Prey', position: 'insideBottomRight', offset: -5, fill: '#64748b', fontSize: 11 }} />
                     <YAxis type="number" dataKey={species[1]?.name || 'Predator'} stroke="#acacd0" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} name={species[1]?.name || 'Predator'} label={{ value: species[1]?.name || 'Predator', angle: -90, position: 'insideLeft', offset: 5, fill: '#64748b', fontSize: 11 }} />
@@ -327,11 +428,45 @@ const App: React.FC = () => {
                       formatter={(value: number) => value.toFixed(2)}
                       contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px' }}
                     />
+                    
+                    {pinnedTraces.map(trace => (
+                      <Scatter
+                        key={`trace-${trace.id}`}
+                        name={trace.name}
+                        data={trace.data}
+                        dataKey={trace.species[1]?.name || 'Predator'}
+                        fill="#ffffff"
+                        opacity={hoveredTraceId === trace.id ? 1 : 0.9}
+                        shape={(props: any) => <circle {...props} r={1.2} />}
+                        isAnimationActive={false}
+                      />
+                    ))}
+
+                    {pinnedTraces.map(trace => trace.equilibrium && (
+                      <Scatter
+                        key={`eq-${trace.id}`}
+                        name={`${trace.name} Eq`}
+                        data={[{ [trace.species[0].name]: trace.equilibrium.x, [trace.species[1].name]: trace.equilibrium.y }]}
+                        dataKey={trace.species[1].name}
+                        fill="#38bdf8"
+                        opacity={hoveredTraceId === trace.id ? 1.0 : 0.4}
+                        shape={(props: any) => (
+                          <g transform={`translate(${props.cx},${props.cy})`}>
+                            <line x1="-5" y1="0" x2="5" y2="0" stroke="#38bdf8" strokeWidth="2" />
+                            <line x1="0" y1="-5" x2="0" y2="5" stroke="#38bdf8" strokeWidth="2" />
+                          </g>
+                        )}
+                        isAnimationActive={false}
+                      />
+                    ))}
+
                     <Scatter
-                      name="Phase Space"
+                      name="Current Run"
+                      data={history}
                       dataKey={species[1]?.name || 'Predator'}
                       fill="#8b5cf6"
                       shape={(props: any) => <circle {...props} r={1.5} />}
+                      isAnimationActive={false}
                     />
                   </ScatterChart>
                 </ResponsiveContainer>
@@ -343,7 +478,7 @@ const App: React.FC = () => {
             <h3 className="text-sm font-bold text-slate-300 mb-2 text-center">Population over Time</h3>
             <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={history}>
+                <LineChart>
                   <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                   <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickCount={8} domain={[0, 'dataMax']} type="number" tickFormatter={(value: number) => value.toFixed(1)} />
                   <YAxis stroke="#64748b" fontSize={11} tickFormatter={(value: number) => value.toFixed(1)} />
@@ -353,8 +488,36 @@ const App: React.FC = () => {
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '4px', fontSize: '12px' }}
                   />
                   <Legend iconSize={10} wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                  
+                  {pinnedTraces.map(trace => (
+                    trace.species.map((s, i) => (
+                      <Line 
+                        key={`pinned-${trace.id}-${i}`}
+                        data={trace.data}
+                        type="monotone"
+                        dataKey={s.name}
+                        stroke="#ffffff"
+                        strokeWidth={1.2}
+                        strokeDasharray="3 3"
+                        dot={false}
+                        opacity={hoveredTraceId === trace.id ? 0.8 : 0.8}
+                        isAnimationActive={false}
+                        connectNulls
+                      />
+                    ))
+                  ))}
+
                   {species.map((s, i) => (
-                    <Line key={i} type="monotone" dataKey={s.name} stroke={s.color} dot={false} strokeWidth={1.5} isAnimationActive={false} />
+                    <Line 
+                      key={`current-${i}`}
+                      data={history}
+                      type="monotone" 
+                      dataKey={s.name} 
+                      stroke={s.color} 
+                      dot={false} 
+                      strokeWidth={2} 
+                      isAnimationActive={false} 
+                    />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
@@ -388,6 +551,38 @@ const App: React.FC = () => {
               </div>
             ))}
           </div>
+
+          {pinnedTraces.length > 0 && (
+            <div className="mt-2 border-t border-slate-700 pt-4">
+              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 mb-3 text-center">Pinned Runs</h3>
+              <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1">
+                {pinnedTraces.map((trace) => (
+                  <div 
+                    key={trace.id}
+                    onMouseEnter={() => setHoveredTraceId(trace.id)}
+                    onMouseLeave={() => setHoveredTraceId(null)}
+                    className={`group p-2 rounded border transition-all flex items-center justify-between ${hoveredTraceId === trace.id ? 'bg-white border-white ring-2 ring-blue-500/50 shadow-lg' : 'bg-slate-900/40 border-slate-700/50'}`}
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold truncate ${hoveredTraceId === trace.id ? 'text-slate-900' : 'text-slate-300'}`}>{trace.name}</span>
+                        <span className={`text-[9px] font-mono font-bold ${hoveredTraceId === trace.id ? 'text-blue-600' : 'text-blue-400'}`}>ε:[{trace.species.map(s => s.eps).join(',')}]</span>
+                      </div>
+                      <span className={`text-[10px] truncate italic ${hoveredTraceId === trace.id ? 'text-slate-600' : 'text-slate-500'}`}>
+                        Init: [{trace.species.map(s => s.initial_pop).join(', ')}]
+                      </span>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteTrace(trace.id)}
+                      className={`p-1 transition-opacity opacity-0 group-hover:opacity-100 ${hoveredTraceId === trace.id ? 'text-red-500 hover:text-red-700' : 'text-slate-500 hover:text-red-400'}`}
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-2 shrink-0 border-t border-slate-700 pt-4">
             <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 mb-3 text-center">Interactions (A)</h3>
