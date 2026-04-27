@@ -8,7 +8,7 @@ An interactive predator-prey ecosystem simulator with:
 
 Current release:
 
-- Version: 1.1.1-STABLE
+- Version: 1.2.0
 
 ## What This Project Does
 
