@@ -39,6 +39,11 @@ const App: React.FC = () => {
   const ws = useRef<WebSocket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particles = useRef<{x: number, y: number, vx: number, vy: number, speciesIdx: number}[]>([]);
+  const speciesRef = useRef<Species[]>(species);
+
+  useEffect(() => {
+    speciesRef.current = species;
+  }, [species]);
 
   // Safety check for populations and matrix array
   useEffect(() => {
@@ -143,8 +148,9 @@ const App: React.FC = () => {
         if (msg.type === 'UPDATE') {
           setPopulations(msg.payload.populations);
           const newPoint: HistoryPoint = { time: msg.payload.time };
+          const activeSpecies = speciesRef.current;
           msg.payload.populations.forEach((p: number, i: number) => {
-            if (species[i]) newPoint[species[i].name] = p;
+            if (activeSpecies[i]) newPoint[activeSpecies[i].name] = p;
           });
           setHistory(prev => {
             // 1. Throttle: Only add to history if simulation time has advanced significantly
@@ -207,8 +213,25 @@ const App: React.FC = () => {
   };
 
   const addSpecies = () => {
-    const newSpecies = [...species, { name: `Specie ${species.length + 1}`, color: '#ffffff', initial_pop: 10, eps: 0.5 }];
+    const isAddingThirdSpecies = species.length === 2;
+    const newSpecies = [
+      ...species,
+      {
+        name: `Specie ${species.length + 1}`,
+        color: '#ffffff',
+        initial_pop: 10,
+        eps: isAddingThirdSpecies ? -2.0 : 0.5,
+      },
+    ];
     setSpecies(newSpecies);
+
+    if (isAddingThirdSpecies) {
+      setMatrix([
+        [0, -0.1, -0.02],
+        [0.1, 0, -0.03],
+        [0.05, 0.05, 0],
+      ]);
+    }
   };
 
   const updateSpecies = (idx: number, field: keyof Species, val: any) => {
